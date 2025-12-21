@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ШефПорт — MiniApp</title>
+
+  <!-- Telegram WebApp (не обязателен, но полезен для ready/expand) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --btn:#111827;
+      --btnText:#ffffff;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+      --radius:16px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:-apple-system, system-ui, BlinkMacSystemFont, "SF Pro Text", Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .page{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 14px;
+      padding-bottom: 96px; /* место под bottom bar */
+    }
+
+    /* Header */
+    .hdr{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(15,23,42,.06);
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+    }
+    .hdrTop{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+    }
+    .title{
+      font-size: 18px;
+      font-weight: 800;
+      margin:0;
+      line-height:1.15;
+    }
+    #sub{
+      margin-top:6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Catalog dropdown */
+    .dropdownWrap{
+      margin-top: 10px;
+      position: relative;
+    }
+
+    /* ✅ Кнопка Каталог — широкая */
+    #catalogBtn{
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px 12px;
+      font-weight: 800;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      cursor:pointer;
+    }
+    #catalogBtn .left{
+      display:flex; align-items:center; gap:8px;
+      min-width:0;
+    }
+    #catalogBtn .left span{
+      white-space: nowrap;
+    }
+    #catalogBtn .right{
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    /* Dropdown panel */
+    #dropdown{
+      display:none;
+      position:absolute;
+      left:0; right:0;
+      top: calc(100% + 8px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      z-index: 30;
+      overflow:hidden;
+    }
+    #dropdown.open{ display:block; }
+
+    /* ✅ Скролл именно внутри списка категорий */
+    #cats{
+      max-height: min(70vh, 520px);
+      overflow:auto;
+      padding: 10px;
+      display:flex;
+      flex-direction: column; /* ✅ в столбец */
+      gap: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ✅ Категория в 2 строки */
+    .catBtn{
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 800;
+      text-align:left;
+      cursor:pointer;
+      color: var(--text);
+
+      display: -webkit-box;
+      -webkit-line-clamp: 2;       /* ✅ максимум 2 строки */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+    .catBtn.active{
+      background: #111827;
+      color:#fff;
+      border-color:#111827;
+    }
+
+    /* Errors */
+    #err{
+      margin-top:10px;
+      background: #fff;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 14px;
+      padding: 10px 12px;
+      display:none;
+    }
+
+    /* Products grid */
+    #products{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (min-width: 720px){
+      #products{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow:hidden;
+      box-shadow: 0 2px 8px rgba(15,23,42,.06);
+      display:flex;
+      flex-direction: column;
+      min-height: 240px;
+    }
+    .img{
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      background: #e5e7eb;
+      display:block;
+    }
+    .body{
+      padding: 10px 10px 12px;
+      display:flex;
+      flex-direction: column;
+      gap: 8px;
+      flex:1;
+    }
+    .name{
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.15;
+
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .meta{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .actions{
+      margin-top:auto;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    .add{
+      width:100%;
+      border:0;
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 900;
+      background: var(--btn);
+      color: var(--btnText);
+      cursor:pointer;
+    }
+    .add:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .step{
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background:#fff;
+      font-weight: 900;
+      cursor:pointer;
+    }
+    .inCart{
+      flex:1;
+      text-align:center;
+      font-weight: 900;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    #empty{
+      margin-top: 14px;
+      color: var(--muted);
+      text-align:center;
+      display:none;
+      font-weight: 700;
+    }
+
+    /* Bottom bar (корзина всегда видна, не внизу списка) */
+    #bottomBar{
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      height: 54px;
+      border-radius: 999px;
+      background: #111827;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: var(--shadow);
+      z-index: 50;
+      cursor:pointer;
+      user-select:none;
+    }
+    #bottomBar.hidden{ display:none; }
+    #bbLeft{ font-weight: 900; }
+    #bbRight{ opacity: .9; font-weight: 900; }
+
+    /* Overlay + Sheet */
+    #overlay{
+      position: fixed;
+      inset:0;
+      background: rgba(0,0,0,.35);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .16s ease;
+      z-index: 60;
+    }
+    #overlay.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    #sheet{
+      position: fixed;
+      left:0; right:0; bottom:0;
+      background:#fff;
+      border-radius: 18px 18px 0 0;
+      transform: translateY(110%);
+      transition: transform .16s ease;
+      z-index: 70;
+      max-height: 82vh;
+      overflow:auto;
+      padding: 12px;
+      box-shadow: 0 -12px 28px rgba(0,0,0,.18);
+    }
+    #sheet.open{ transform: translateY(0); }
+
+    .sheetHdr{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    .sheetTitle{ font-weight: 900; font-size: 16px; }
+    .closeBtn{
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background:#fff;
+      font-weight: 900;
+      font-size: 20px;
+      cursor:pointer;
+    }
+
+    .cartList{
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .cartRow{
+      display:grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items:center;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+    }
+    .cartName{
+      font-weight: 900;
+      font-size: 13px;
+      line-height:1.15;
+    }
+    .cartLine{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    .cartQty{
+      min-width: 74px;
+      text-align:center;
+      font-weight: 900;
+      font-size: 12px;
+    }
+    .cartSum{
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .totalRow{
+      display:flex;
+      justify-content:space-between;
+      font-weight: 900;
+      margin-top: 12px;
+      padding: 10px 2px;
+    }
+
+    .form{
+      display:flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding-bottom: 8px;
+    }
+    .inp{
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+    .orderBtn{
+      border:0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 900;
+      background: #16a34a;
+      color:#fff;
+      cursor:pointer;
+    }
+    .orderBtn:disabled{ opacity: .65; cursor: default; }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="hdr">
+      <div class="hdrTop">
+        <h1 class="title">ШефПорт — магазин</h1>
+      </div>
+      <div id="sub"></div>
+
+      <div class="dropdownWrap">
+        <button id="catalogBtn" type="button" aria-label="Каталог">
+          <div class="left"><span>📦 Каталог</span></div>
+          <div class="right">выбрать</div>
+        </button>
+
+        <div id="dropdown" role="dialog" aria-label="Категории">
+          <div id="cats"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="err"></div>
+    <div id="products"></div>
+    <div id="empty">Товары не найдены</div>
+  </div>
+
+  <!-- Bottom bar cart -->
+  <div id="bottomBar" class="hidden">
+    <div id="bbLeft">🛒 Корзина</div>
+    <div id="bbRight">0 ₽</div>
+  </div>
+
+  <!-- Overlay + Sheet -->
+  <div id="overlay"></div>
+  <div id="sheet"></div>
+
+  <script src="app.js?v=7"></script>
+</body>
+</html>
